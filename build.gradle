@@ -1,6 +1,6 @@
 allprojects {
     group 'fr.minuskube.inv'
-    version '1.3.5'
+    version '1.4.0'
 }
 
 subprojects {
@@ -40,12 +40,18 @@ subprojects {
 }
 
 task createBukkitJar(type: Jar) {
+    manifest {
+        attributes["paperweight-mappings-namespace"] = "mojang"
+    }
     archiveFileName = 'SmartInvs-Bukkit-' + project.version + '.jar'
     from { project(':core').sourceSets.main.output }
     from { project(':bukkit').sourceSets.main.output }
 }
 
 task createFoliaJar(type: Jar) {
+    manifest {
+        attributes["paperweight-mappings-namespace"] = "mojang"
+    }
     archiveFileName = 'SmartInvs-Folia-' + project.version + '.jar'
     from { project(':core').sourceSets.main.output }
     from { project(':folia').sourceSets.main.output }
