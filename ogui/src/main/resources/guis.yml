@@ -1,0 +1,19 @@
+guis:
+  example:
+    title: "&aExample Menu"
+    rows: 3
+    items:
+      "11":
+        material: DIAMOND
+        name: "&bShiny"
+        lore:
+          - "&7Click me to broadcast a message."
+        commands:
+          - "say {player} clicked the shiny button!"
+        close: true
+      "15":
+        material: BARRIER
+        name: "&cClose"
+        lore:
+          - "&7Close this menu."
+        close: true

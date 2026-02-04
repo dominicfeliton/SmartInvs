@@ -1,0 +1,17 @@
+name: OGUI
+version: 1.0.0
+main: com.ogui.OGUIPlugin
+api-version: 1.13
+depend: [SmartInvs]
+commands:
+  ogui:
+    description: Open or reload OGUI menus.
+    usage: /ogui <open|reload> [id] [player]
+    permission: ogui.command
+permissions:
+  ogui.command:
+    default: true
+  ogui.open:
+    default: true
+  ogui.reload:
+    default: op

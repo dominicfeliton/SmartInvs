@@ -1,5 +1,4 @@
 rootProject.name = 'smart-invs'
 
-include 'core', 'bukkit', 'folia'
+include 'core', 'bukkit', 'folia', 'ogui'
 include 'bukkit'
-
