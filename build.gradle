@@ -1,6 +1,6 @@
 allprojects {
-    group 'fr.minuskube.inv'
-    version '1.4.0'
+    group = 'fr.minuskube.inv'
+    version = '1.4.0'
 }
 
 subprojects {
@@ -9,9 +9,9 @@ subprojects {
 
     repositories {
         mavenCentral()
-        maven { url 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
-        maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
-        maven { url 'https://repo.papermc.io/repository/maven-public/' }
+        maven { url = uri('https://hub.spigotmc.org/nexus/content/repositories/snapshots/') }
+        maven { url = uri('https://oss.sonatype.org/content/repositories/snapshots') }
+        maven { url = uri('https://repo.papermc.io/repository/maven-public/') }
     }
 
     javadoc {
@@ -32,10 +32,10 @@ subprojects {
         from sourceSets.main.allSource
     }
 
-    artifacts { archives javadocJar, sourcesJar }
+    assemble.dependsOn javadocJar, sourcesJar
 
     signing {
-        sign configurations.archives
+        sign jar, javadocJar, sourcesJar
     }
 }
 
@@ -43,6 +43,7 @@ task createBukkitJar(type: Jar) {
     manifest {
         attributes["paperweight-mappings-namespace"] = "mojang"
     }
+    destinationDirectory = layout.buildDirectory.dir('libs')
     archiveFileName = 'SmartInvs-Bukkit-' + project.version + '.jar'
     from { project(':core').sourceSets.main.output }
     from { project(':bukkit').sourceSets.main.output }
@@ -52,7 +53,11 @@ task createFoliaJar(type: Jar) {
     manifest {
         attributes["paperweight-mappings-namespace"] = "mojang"
     }
+    destinationDirectory = layout.buildDirectory.dir('libs')
     archiveFileName = 'SmartInvs-Folia-' + project.version + '.jar'
-    from { project(':core').sourceSets.main.output }
+    from(project(':core').sourceSets.main.output) {
+        exclude 'plugin.yml'
+    }
     from { project(':folia').sourceSets.main.output }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
