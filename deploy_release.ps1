@@ -1,3 +1,7 @@
+param(
+    [string]$PublishVersion = $(if ($env:PUBLISH_VERSION) { $env:PUBLISH_VERSION } else { $env:VERSION })
+)
+
 # Change to the directory where the script is located
 Set-Location -Path $PSScriptRoot
 
@@ -162,7 +166,17 @@ if (-not $jar) {
 }
 
 $jarPath = $jar.FullName
-$version = $jar.BaseName.Substring($JarPrefix.Length + 1)
+$inferredVersion = $jar.BaseName.Substring($JarPrefix.Length + 1)
+
+if ($PublishVersion) {
+    $version = $PublishVersion
+    if ($version -ne $inferredVersion) {
+        Write-Host "Using publish version $version; built jar version is $inferredVersion."
+    }
+}
+else {
+    $version = $inferredVersion
+}
 
 Write-Host "Publishing $ArtifactId $version from $jarPath..."
 

@@ -8,6 +8,12 @@ GRADLE_TASK="createFoliaJar"
 JAR_PREFIX="SmartInvs-Folia"
 MASTER_BRANCH="${MASTER_BRANCH:-master}"
 MASTER_WORKTREE_DIR="${MASTER_WORKTREE_DIR:-../SmartInvs-master}"
+PUBLISH_VERSION="${PUBLISH_VERSION:-${VERSION:-${1:-}}}"
+
+if [ "$#" -gt 1 ]; then
+    echo "Usage: $0 [publish-version]"
+    exit 1
+fi
 
 # Function to check if a command exists
 command_exists() {
@@ -140,8 +146,17 @@ if [ ! -f "$jar_path" ]; then
 fi
 
 jar_name=$(basename "$jar_path")
-version="${jar_name#$JAR_PREFIX-}"
-version="${version%.jar}"
+inferred_version="${jar_name#$JAR_PREFIX-}"
+inferred_version="${inferred_version%.jar}"
+
+if [ -n "$PUBLISH_VERSION" ]; then
+    version="$PUBLISH_VERSION"
+    if [ "$version" != "$inferred_version" ]; then
+        echo "Using publish version $version; built jar version is $inferred_version."
+    fi
+else
+    version="$inferred_version"
+fi
 
 echo "Publishing $ARTIFACT_ID $version from $jar_path..."
 
