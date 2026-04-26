@@ -3,9 +3,80 @@
 # Change to the directory where the script is located
 cd "$(dirname "$0")" || exit
 
+ARTIFACT_ID="folia-smart-invs"
+GRADLE_TASK="createFoliaJar"
+JAR_PREFIX="SmartInvs-Folia"
+MASTER_BRANCH="${MASTER_BRANCH:-master}"
+MASTER_WORKTREE_DIR="${MASTER_WORKTREE_DIR:-../SmartInvs-master}"
+
 # Function to check if a command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
+}
+
+install_missing_command() {
+    local cmd="$1"
+    local package="${2:-$1}"
+
+    if command_exists "$cmd"; then
+        return
+    fi
+
+    echo "$cmd is not installed. Attempting to install..."
+    if [ "$OS" == "macOS" ]; then
+        $INSTALL_CMD "$package"
+    elif [ "$OS" == "Linux" ]; then
+        $INSTALL_CMD "$package"
+    fi
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to install $cmd. Please install it manually."
+        exit 1
+    fi
+}
+
+prepare_master_worktree() {
+    if [ -e "$MASTER_WORKTREE_DIR" ]; then
+        if [ ! -d "$MASTER_WORKTREE_DIR/.git" ] && [ ! -f "$MASTER_WORKTREE_DIR/.git" ]; then
+            echo "Error: $MASTER_WORKTREE_DIR exists but is not a git worktree."
+            exit 1
+        fi
+    else
+        echo "Creating $MASTER_BRANCH worktree at $MASTER_WORKTREE_DIR..."
+        git fetch origin "$MASTER_BRANCH"
+
+        if git show-ref --verify --quiet "refs/heads/$MASTER_BRANCH"; then
+            git worktree add "$MASTER_WORKTREE_DIR" "$MASTER_BRANCH"
+        else
+            git worktree add -b "$MASTER_BRANCH" "$MASTER_WORKTREE_DIR" "origin/$MASTER_BRANCH"
+        fi
+    fi
+
+    (
+        cd "$MASTER_WORKTREE_DIR" || exit 1
+
+        current_branch=$(git branch --show-current)
+        if [ "$current_branch" != "$MASTER_BRANCH" ]; then
+            echo "Error: $MASTER_WORKTREE_DIR is on '$current_branch', not '$MASTER_BRANCH'."
+            exit 1
+        fi
+
+        echo "Updating $MASTER_BRANCH..."
+        git fetch origin "$MASTER_BRANCH"
+        git pull --ff-only origin "$MASTER_BRANCH"
+
+        if [ ! -x ./gradlew ]; then
+            chmod +x ./gradlew
+        fi
+
+        echo "Building $GRADLE_TASK from $MASTER_BRANCH..."
+        ./gradlew clean "$GRADLE_TASK"
+    )
+
+    if [ $? -ne 0 ]; then
+        echo "Build from $MASTER_BRANCH failed. Exiting."
+        exit 1
+    fi
 }
 
 # Detect OS
@@ -42,47 +113,42 @@ elif [ "$OS" == "Linux" ]; then
 fi
 
 # Check for required commands
-for cmd in mvn shasum md5sum; do
-    if ! command_exists $cmd; then
-        echo "$cmd is not installed. Attempting to install..."
-        if [ "$OS" == "macOS" ]; then
-            $INSTALL_CMD $cmd
-        elif [ "$OS" == "Linux" ]; then
-            case $cmd in
-                mvn)
-                    $INSTALL_CMD maven
-                    ;;
-                shasum)
-                    $INSTALL_CMD perl
-                    ;;
-                md5sum)
-                    # md5sum is usually pre-installed on Linux
-                    echo "md5sum not found. Please install it manually."
-                    exit 1
-                    ;;
-            esac
-        fi
-        if [ $? -ne 0 ]; then
-            echo "Failed to install $cmd. Please install it manually."
-            exit 1
-        fi
-    fi
-done
+install_missing_command git git
+install_missing_command mvn maven
 
-# Ask user for JAR file location
-read -p "Enter the full path to the JAR file: " jar_path
-if [ ! -f "$jar_path" ]; then
-    echo "Error: The specified JAR file does not exist."
+if ! command_exists java; then
+    echo "java is not installed. Please install JDK 21 or newer."
     exit 1
 fi
 
-# Ask user for version
-read -p "Enter the version number: " version
+if [ "$OS" == "macOS" ]; then
+    install_missing_command shasum perl
+    install_missing_command md5
+elif [ "$OS" == "Linux" ]; then
+    install_missing_command shasum perl
+    install_missing_command md5sum coreutils
+fi
+
+prepare_master_worktree
+
+jar_files=("$MASTER_WORKTREE_DIR"/build/libs/"$JAR_PREFIX"-*.jar)
+jar_path="${jar_files[0]}"
+
+if [ ! -f "$jar_path" ]; then
+    echo "Error: Could not find built jar at $MASTER_WORKTREE_DIR/build/libs/$JAR_PREFIX-*.jar"
+    exit 1
+fi
+
+jar_name=$(basename "$jar_path")
+version="${jar_name#$JAR_PREFIX-}"
+version="${version%.jar}"
+
+echo "Publishing $ARTIFACT_ID $version from $jar_path..."
 
 # Run Maven install command
 mvn install:install-file \
     -DgroupId=fr.minuskube.inv \
-    -DartifactId=folia-smart-invs \
+    -DartifactId="$ARTIFACT_ID" \
     -Dversion="$version" \
     -Dfile="$jar_path" \
     -Dpackaging=jar \
@@ -97,9 +163,9 @@ fi
 
 # Generate SHA1 and MD5 checksums
 echo "Generating checksums..."
-cd fr/minuskube/inv/folia-smart-invs/"$version"
+cd fr/minuskube/inv/"$ARTIFACT_ID"/"$version" || exit
 
-for file in folia-smart-invs-"$version".{jar,pom}; do
+for file in "$ARTIFACT_ID"-"$version".{jar,pom}; do
     if [ "$OS" == "macOS" ]; then
         shasum -a 1 "$file" > "$file.sha1"
         md5 "$file" > "$file.md5"
