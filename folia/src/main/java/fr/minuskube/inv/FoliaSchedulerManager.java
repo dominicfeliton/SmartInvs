@@ -4,15 +4,15 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.scheduler.BukkitRunnable;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import static fr.minuskube.inv.util.Misc.debugMsg;
 
 public class FoliaSchedulerManager implements SchedulerManager {
     private final JavaPlugin plugin;
-    private final Map<Player, ScheduledTask> tasks = new HashMap<>();
+    private final Map<Player, ScheduledTask> tasks = new ConcurrentHashMap<>();
 
     public FoliaSchedulerManager(JavaPlugin plugin) {
         this.plugin = plugin;

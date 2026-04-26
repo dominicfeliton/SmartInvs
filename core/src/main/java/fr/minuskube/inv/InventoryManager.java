@@ -35,6 +35,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static fr.minuskube.inv.util.Misc.debugMsg;
 
@@ -81,8 +82,8 @@ public class InventoryManager {
         this.pluginManager = Bukkit.getPluginManager();
         this.scheduler = createSchedulerManager(plugin);
 
-        this.inventories = new HashMap<>();
-        this.contents = new HashMap<>();
+        this.inventories = new ConcurrentHashMap<>();
+        this.contents = new ConcurrentHashMap<>();
         //this.updateTasks = new HashMap<>();
 
         this.defaultOpeners = Arrays.asList(
