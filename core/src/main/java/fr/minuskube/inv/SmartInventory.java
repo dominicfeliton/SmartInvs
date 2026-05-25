@@ -76,7 +76,7 @@ public class SmartInventory {
                     .forEach(listener -> ((InventoryListener<InventoryCloseEvent>) listener)
                             .accept(new InventoryCloseEvent(player.getOpenInventory())));
 
-            this.manager.cancelUpdateTask(player);
+            this.manager.cancelAllTasks(player);
             this.manager.setInventory(player, null);
         });
 
@@ -107,7 +107,7 @@ public class SmartInventory {
         player.closeInventory();
 
         this.manager.setContents(player, null);
-        this.manager.cancelUpdateTask(player);
+        this.manager.cancelAllTasks(player);
     }
     /**
      * Checks if this inventory has a slot at the specified position

@@ -6,14 +6,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import static fr.minuskube.inv.util.Misc.debugMsg;
 
 public class BukkitSchedulerManager implements SchedulerManager {
     private final JavaPlugin plugin;
-    private final Map<Player, BukkitTask> tasks = new ConcurrentHashMap<>();
+    private final SchedulerTaskRegistry<BukkitTask> tasks = new SchedulerTaskRegistry<>(BukkitTask::cancel);
 
     public BukkitSchedulerManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -21,8 +18,13 @@ public class BukkitSchedulerManager implements SchedulerManager {
 
     @Override
     public void runTask(BukkitRunnable task, Player player, long delay, long period, SchedulerType type) {
+        runTask(task, player, delay, period, type, TaskType.UPDATE);
+    }
+
+    @Override
+    public void runTask(BukkitRunnable task, Player player, long delay, long period, SchedulerType type, TaskType taskType) {
         BukkitTask scheduledTask;
-        debugMsg("Using BukkitSchedulerManager to run a task! Type: " + type.name() + " | Delay: " + delay + " | Period: " + period, plugin);
+        debugMsg("Using BukkitSchedulerManager to run a task! Type: " + type.name() + " | Task: " + taskType.name() + " | Delay: " + delay + " | Period: " + period, plugin);
 
         if (delay == 0 && period == 0) {
             debugMsg("runTask()", plugin);
@@ -36,21 +38,30 @@ public class BukkitSchedulerManager implements SchedulerManager {
         }
 
         if (scheduledTask != null) {
-            debugMsg("Added scheduledTask to list. List size: " + tasks.size(), plugin);
-            tasks.put(player, scheduledTask);
+            tasks.replace(player, taskType, scheduledTask);
+            debugMsg("Added scheduledTask to list. Player task count: " + tasks.taskCount(player), plugin);
         } else {
-            debugMsg("scheduledTask was null? Not adding to list! List size: " + tasks.size(), plugin);
+            debugMsg("scheduledTask was null? Not adding to list! Player task count: " + tasks.taskCount(player), plugin);
         }
     }
 
     @Override
     public void cancelTaskByPlayer(Player player) {
-        BukkitTask task = tasks.remove(player);
-        if (task != null) {
-            debugMsg("Task cancelled :) List size: " + tasks.size(), plugin);
-            task.cancel();
+        cancelTaskByPlayer(player, TaskType.UPDATE);
+    }
+
+    @Override
+    public void cancelTaskByPlayer(Player player, TaskType taskType) {
+        if (tasks.cancel(player, taskType)) {
+            debugMsg("Task cancelled :) Player task count: " + tasks.taskCount(player), plugin);
         } else {
-            debugMsg("Unable to cancel task, list remove() returned null. List size: " + tasks.size(), plugin);
+            debugMsg("Unable to cancel task, list remove() returned null. Player task count: " + tasks.taskCount(player), plugin);
         }
+    }
+
+    @Override
+    public void cancelAllTasksByPlayer(Player player) {
+        int cancelled = tasks.cancelAll(player);
+        debugMsg("Cancelled " + cancelled + " task(s) for player. Player task count: " + tasks.taskCount(player), plugin);
     }
 }

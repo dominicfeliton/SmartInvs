@@ -78,9 +78,13 @@ public class InventoryManager {
     }
 
     public InventoryManager(JavaPlugin plugin) {
+        this(plugin, Bukkit.getPluginManager(), null);
+    }
+
+    InventoryManager(JavaPlugin plugin, PluginManager pluginManager, SchedulerManager scheduler) {
         this.plugin = plugin;
-        this.pluginManager = Bukkit.getPluginManager();
-        this.scheduler = createSchedulerManager(plugin);
+        this.pluginManager = pluginManager;
+        this.scheduler = scheduler == null ? createSchedulerManager(plugin) : scheduler;
 
         this.inventories = new ConcurrentHashMap<>();
         this.contents = new ConcurrentHashMap<>();
@@ -153,14 +157,14 @@ public class InventoryManager {
     
     protected void scheduleUpdateTask(Player p, SmartInventory inv) {
     	PlayerInvTask task = new PlayerInvTask(p, inv.getProvider(), contents.get(p));
-        this.scheduler.runTask(task, p, 1, inv.getUpdateFrequency(), SchedulerManager.SchedulerType.ENTITY);
+        this.scheduler.runTask(task, p, 1, inv.getUpdateFrequency(), SchedulerManager.SchedulerType.ENTITY, SchedulerManager.TaskType.UPDATE);
         // Above line ==
         //task.runTaskTimer(plugin, 1, inv.getUpdateFrequency());
     	//this.updateTasks.put(p, task);
     }
     
     protected void cancelUpdateTask(Player p) {
-        this.scheduler.cancelTaskByPlayer(p);
+        this.scheduler.cancelTaskByPlayer(p, SchedulerManager.TaskType.UPDATE);
         /*
         if(updateTasks.containsKey(p)) {
           int bukkitTaskId = this.updateTasks.get(p).getTaskId();
@@ -168,6 +172,10 @@ public class InventoryManager {
           this.updateTasks.remove(p);
     	}
          */
+    }
+
+    protected void cancelAllTasks(Player p) {
+        this.scheduler.cancelAllTasksByPlayer(p);
     }
 
     @SuppressWarnings("unchecked")
@@ -269,7 +277,7 @@ public class InventoryManager {
             } finally {
                 if(inv.isCloseable()) {
                     e.getInventory().clear();
-                    InventoryManager.this.cancelUpdateTask(p);
+                    InventoryManager.this.cancelAllTasks(p);
 
                     inventories.remove(p);
                     contents.remove(p);
@@ -282,7 +290,7 @@ public class InventoryManager {
                             p.openInventory(e.getInventory());
                         }
                     };
-                    scheduler.runTask(open, p, 0, 0, SchedulerManager.SchedulerType.ENTITY);
+                    scheduler.runTask(open, p, 0, 0, SchedulerManager.SchedulerType.ENTITY, SchedulerManager.TaskType.REOPEN);
                 }
             }
         }
@@ -301,6 +309,7 @@ public class InventoryManager {
                         .filter(listener -> listener.getType() == PlayerQuitEvent.class)
                         .forEach(listener -> ((InventoryListener<PlayerQuitEvent>) listener).accept(e));
             } finally {
+                InventoryManager.this.cancelAllTasks(p);
                 inventories.remove(p);
                 contents.remove(p);
             }

@@ -4,15 +4,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.scheduler.BukkitRunnable;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import static fr.minuskube.inv.util.Misc.debugMsg;
 
 public class FoliaSchedulerManager implements SchedulerManager {
     private final JavaPlugin plugin;
-    private final Map<Player, ScheduledTask> tasks = new ConcurrentHashMap<>();
+    private final SchedulerTaskRegistry<ScheduledTask> tasks = new SchedulerTaskRegistry<>(ScheduledTask::cancel);
 
     public FoliaSchedulerManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -20,6 +18,11 @@ public class FoliaSchedulerManager implements SchedulerManager {
 
     @Override
     public void runTask(BukkitRunnable task, Player player, long delay, long period, SchedulerType type) {
+        runTask(task, player, delay, period, type, TaskType.UPDATE);
+    }
+
+    @Override
+    public void runTask(BukkitRunnable task, Player player, long delay, long period, SchedulerType type, TaskType taskType) {
         // Convert BukkitRunnable to Folia task
         debugMsg("Using FoliaSchedulerManager, converting bukkitrun to task...", plugin);
         Consumer<ScheduledTask> consumerTask = (scheduledTask) -> task.run();
@@ -40,10 +43,10 @@ public class FoliaSchedulerManager implements SchedulerManager {
                     scheduledTask = player.getScheduler().runAtFixedRate(plugin, consumerTask, null, delay, period);
                 }
                 if (scheduledTask != null) {
-                    debugMsg("Added scheduledTask to list. List size: " + tasks.size(), plugin);
-                    tasks.put(player, scheduledTask);
+                    tasks.replace(player, taskType, scheduledTask);
+                    debugMsg("Added scheduledTask to list. Player task count: " + tasks.taskCount(player), plugin);
                 } else {
-                    debugMsg("scheduledTask was null? Not adding to list! List size: " + tasks.size(), plugin);
+                    debugMsg("scheduledTask was null? Not adding to list! Player task count: " + tasks.taskCount(player), plugin);
                 }
                 break;
             case GLOBAL:
@@ -57,12 +60,21 @@ public class FoliaSchedulerManager implements SchedulerManager {
 
     @Override
     public void cancelTaskByPlayer(Player player) {
-        ScheduledTask task = tasks.remove(player);
-        if (task != null) {
-            debugMsg("Task cancelled :) List size: " + tasks.size(), plugin);
-            task.cancel();
+        cancelTaskByPlayer(player, TaskType.UPDATE);
+    }
+
+    @Override
+    public void cancelTaskByPlayer(Player player, TaskType taskType) {
+        if (tasks.cancel(player, taskType)) {
+            debugMsg("Task cancelled :) Player task count: " + tasks.taskCount(player), plugin);
         } else {
-            debugMsg("Unable to cancel task, list remove() returned null. List size: " + tasks.size(), plugin);
+            debugMsg("Unable to cancel task, list remove() returned null. Player task count: " + tasks.taskCount(player), plugin);
         }
+    }
+
+    @Override
+    public void cancelAllTasksByPlayer(Player player) {
+        int cancelled = tasks.cancelAll(player);
+        debugMsg("Cancelled " + cancelled + " task(s) for player. Player task count: " + tasks.taskCount(player), plugin);
     }
 }

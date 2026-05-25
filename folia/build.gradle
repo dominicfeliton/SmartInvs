@@ -7,6 +7,7 @@ dependencies {
     implementation project(':core')
     compileOnly 'dev.folia:folia-api:1.20.6-R0.1-SNAPSHOT'
 
+    testImplementation 'junit:junit:4.12'
     testImplementation 'dev.folia:folia-api:1.20.6-R0.1-SNAPSHOT'
 }
 
